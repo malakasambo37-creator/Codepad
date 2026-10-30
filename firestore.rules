@@ -1,0 +1,152 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string &&
+             id.size() >= 1 &&
+             id.size() <= 128 &&
+             id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidCodeDocument(data) {
+      return isSignedIn() &&
+             data.userId is string &&
+             data.userId.size() >= 1 &&
+             data.userId.size() <= 128 &&
+             data.userId == request.auth.uid &&
+             data.title is string &&
+             data.title.size() >= 1 &&
+             data.title.size() <= 120 &&
+             data.content is string &&
+             data.content.size() >= 0 &&
+             data.content.size() <= 500000 &&
+             data.language is string &&
+             data.language.size() >= 1 &&
+             data.language.size() <= 32 &&
+             data.language in [
+               'plaintext',
+               'kotlin',
+               'java',
+               'python',
+               'javascript',
+               'html',
+               'css',
+               'cpp',
+               'json',
+               'sql',
+               'markdown'
+             ] &&
+             data.isPinned is bool &&
+             data.isOpenTab is bool &&
+             data.cursorPosition is int &&
+             data.cursorPosition >= 0 &&
+             data.cursorPosition <= 500000 &&
+             data.lineEnding is string &&
+             data.lineEnding.size() >= 2 &&
+             data.lineEnding.size() <= 4 &&
+             data.lineEnding in ['LF', 'CRLF'] &&
+             data.createdAt is timestamp &&
+             data.createdAt <= request.time &&
+             data.updatedAt is timestamp &&
+             data.updatedAt <= request.time;
+    }
+
+    match /users/{userId}/documents/{documentId} {
+      allow get: if isSignedIn() &&
+                    isValidId(userId) &&
+                    isValidId(documentId) &&
+                    request.auth.uid == userId &&
+                    existing().userId == request.auth.uid;
+
+      allow list: if isSignedIn() &&
+                     request.auth.uid == userId &&
+                     existing().userId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidId(documentId) &&
+                       request.auth.uid == userId &&
+                       incoming().keys().hasAll([
+                         'userId',
+                         'title',
+                         'content',
+                         'language',
+                         'isPinned',
+                         'isOpenTab',
+                         'cursorPosition',
+                         'lineEnding',
+                         'createdAt',
+                         'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId',
+                         'title',
+                         'content',
+                         'language',
+                         'isPinned',
+                         'isOpenTab',
+                         'cursorPosition',
+                         'lineEnding',
+                         'createdAt',
+                         'updatedAt'
+                       ]) &&
+                       isValidCodeDocument(incoming());
+
+      allow update: if isValidCodeDocument(incoming()) &&
+                       isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidId(documentId) &&
+                       request.auth.uid == userId &&
+                       existing().userId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().keys().hasOnly([
+                         'userId',
+                         'title',
+                         'content',
+                         'language',
+                         'isPinned',
+                         'isOpenTab',
+                         'cursorPosition',
+                         'lineEnding',
+                         'createdAt',
+                         'updatedAt'
+                       ]) && (
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'title',
+                           'content',
+                           'language',
+                           'isPinned',
+                           'isOpenTab',
+                           'cursorPosition',
+                           'lineEnding',
+                           'updatedAt'
+                         ])
+                       );
+
+      allow delete: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidId(documentId) &&
+                       request.auth.uid == userId &&
+                       existing().userId == request.auth.uid;
+    }
+  }
+}

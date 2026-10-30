@@ -1,0 +1,88 @@
+{
+  "entities": {
+    "CodeDocument": {
+      "title": "CodeDocument",
+      "description": "A user-authored text or source code document managed in CodePad.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase UID of the document owner."
+        },
+        "title": {
+          "type": "string",
+          "description": "File name including extension (e.g. main.kt, notes.txt)."
+        },
+        "content": {
+          "type": "string",
+          "description": "UTF-8 text or source code content of the document."
+        },
+        "language": {
+          "type": "string",
+          "description": "Syntax highlighting language identifier.",
+          "enum": [
+            "plaintext",
+            "kotlin",
+            "java",
+            "python",
+            "javascript",
+            "html",
+            "css",
+            "cpp",
+            "json",
+            "sql",
+            "markdown"
+          ]
+        },
+        "isPinned": {
+          "type": "boolean",
+          "description": "Whether the document is pinned to the top of the explorer."
+        },
+        "isOpenTab": {
+          "type": "boolean",
+          "description": "Whether the document is currently open as a tab in the editor."
+        },
+        "cursorPosition": {
+          "type": "integer",
+          "description": "Last saved character offset of the editor cursor."
+        },
+        "lineEnding": {
+          "type": "string",
+          "description": "Line ending style for the file.",
+          "enum": [
+            "LF",
+            "CRLF"
+          ]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp populated via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last modification timestamp populated via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "title",
+        "content",
+        "language",
+        "isPinned",
+        "isOpenTab",
+        "cursorPosition",
+        "lineEnding",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/documents/{documentId}": {
+      "schema": "CodeDocument",
+      "description": "Per-user collection of code and text documents in CodePad."
+    }
+  }
+}

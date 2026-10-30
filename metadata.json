@@ -1,0 +1,6 @@
+{
+  "name": "CodePad",
+  "description": "Editor kode dan teks native Android terinspirasi Notepad++ dengan multi-tab, syntax highlighting, pencarian regex, dan sinkronisasi dokumen cloud.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

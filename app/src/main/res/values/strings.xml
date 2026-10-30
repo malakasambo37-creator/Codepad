@@ -1,0 +1,118 @@
+<resources>
+    <string name="app_name">CodePad</string>
+
+    <!-- Auth Screen -->
+    <string name="auth_badge_native">NATIVE ANDROID CODE EDITOR</string>
+    <string name="auth_headline">CodePad Studio</string>
+    <string name="auth_subtitle">Pengalaman editor kode &amp; teks cepat ala Notepad++ di Android — lengkap dengan multi-tab, syntax highlighting 11 bahasa, regex search, dan sinkronisasi cloud otomatis.</string>
+    <string name="auth_feature_multitab">Multi-Tab &amp; Cloud Sync</string>
+    <string name="auth_feature_syntax">Syntax Highlighting 11 Bahasa</string>
+    <string name="auth_feature_regex">Find &amp; Replace + Regex</string>
+    <string name="auth_feature_tools">TextFX &amp; Line Operations</string>
+    <string name="auth_sign_in_google">Masuk dengan Google</string>
+    <string name="auth_signing_in">Menghubungkan akun…</string>
+    <string name="auth_security_note">Dokumen kode Anda terenkripsi dan terisolasi per akun Google di Cloud Firestore.</string>
+
+    <!-- Top App Bar & Explorer -->
+    <string name="cd_open_explorer">Buka daftar dokumen</string>
+    <string name="cd_new_document">Buat dokumen baru</string>
+    <string name="cd_save_document">Simpan ke cloud</string>
+    <string name="cd_find_replace">Cari dan ganti teks</string>
+    <string name="cd_text_tools">Alat teks Notepad++</string>
+    <string name="cd_more_options">Menu lainnya</string>
+    <string name="cd_undo">Urungkan perubahan</string>
+    <string name="cd_redo">Ulangi perubahan</string>
+    <string name="cd_close_tab">Tutup tab</string>
+    <string name="cd_pin_document">Sematkan dokumen</string>
+    <string name="cd_delete_document">Hapus dokumen</string>
+
+    <string name="menu_open_local_file">Buka File Lokal…</string>
+    <string name="menu_export_local_file">Simpan ke Perangkat (Save As)…</string>
+    <string name="menu_rename_document">Ubah Nama &amp; Bahasa…</string>
+    <string name="menu_goto_line">Ke Baris (Go to Line)…</string>
+    <string name="menu_editor_settings">Tampilan &amp; Pengaturan Editor…</string>
+    <string name="menu_share_code">Bagikan Kode…</string>
+    <string name="menu_sign_out">Keluar Akun</string>
+
+    <!-- Explorer Drawer / Sheet -->
+    <string name="explorer_title">Workspace Dokumen</string>
+    <string name="explorer_search_hint">Cari nama file atau isi…</string>
+    <string name="explorer_empty_title">Belum ada dokumen tersimpan</string>
+    <string name="explorer_empty_subtitle">Buat file kosong atau pilih template kode siap pakai di bawah.</string>
+    <string name="explorer_section_pinned">DISEMATKAN</string>
+    <string name="explorer_section_all">SEMUA DOKUMEN</string>
+
+    <!-- Empty Workspace -->
+    <string name="empty_workspace_title">Siap Menulis Kode</string>
+    <string name="empty_workspace_subtitle">Buat tab baru, gunakan template bahasa pemrograman, atau buka file lokal dari perangkat Anda.</string>
+    <string name="btn_new_blank_file">Tab Baru (untitled.txt)</string>
+    <string name="btn_open_device_file">Buka File Perangkat</string>
+    <string name="section_quick_templates">Template Cepat</string>
+
+    <!-- Find & Replace Bar -->
+    <string name="find_hint">Cari teks atau pola…</string>
+    <string name="replace_hint">Ganti dengan…</string>
+    <string name="btn_replace_one">Ganti</string>
+    <string name="btn_replace_all">Semua</string>
+    <string name="cd_toggle_regex">Gunakan Regular Expression</string>
+    <string name="cd_toggle_case">Cocokkan huruf besar/kecil</string>
+    <string name="cd_find_prev">Hasil sebelumnya</string>
+    <string name="cd_find_next">Hasil berikutnya</string>
+    <string name="cd_close_find">Tutup panel pencarian</string>
+
+    <!-- Dialogs -->
+    <string name="dialog_new_file_title">Buat Dokumen Baru</string>
+    <string name="dialog_rename_title">Ubah Nama &amp; Bahasa</string>
+    <string name="label_file_name">Nama File (beserta ekstensi)</string>
+    <string name="label_language">Bahasa Syntax</string>
+    <string name="label_template">Isi Awal</string>
+    <string name="template_blank">Kosong</string>
+    <string name="template_starter">Contoh Kode Starter</string>
+    <string name="btn_create">Buat</string>
+    <string name="btn_save">Simpan</string>
+    <string name="btn_cancel">Batal</string>
+    <string name="btn_delete">Hapus</string>
+    <string name="btn_apply">Terapkan</string>
+    <string name="btn_close">Tutup</string>
+
+    <string name="dialog_goto_line_title">Pindah ke Baris (Go to Line)</string>
+    <string name="label_line_number">Nomor Baris (1 – %1$d)</string>
+
+    <string name="dialog_delete_title">Hapus Dokumen?</string>
+    <string name="dialog_delete_message">Dokumen \"%1$s\" akan dihapus permanen dari cloud workspace Anda.</string>
+
+    <!-- TextFX Tools Sheet -->
+    <string name="textfx_title">TextFX &amp; Operasi Baris</string>
+    <string name="textfx_subtitle">Alat manipulasi teks cepat khas Notepad++</string>
+    <string name="tool_uppercase">HURUF BESAR SEMUA (UPPERCASE)</string>
+    <string name="tool_lowercase">huruf kecil semua (lowercase)</string>
+    <string name="tool_sort_asc">Urutkan Baris A → Z</string>
+    <string name="tool_sort_desc">Urutkan Baris Z → A</string>
+    <string name="tool_dedupe_lines">Hapus Baris Duplikat</string>
+    <string name="tool_remove_empty">Hapus Baris Kosong</string>
+    <string name="tool_trim_trailing">Hapus Spasi di Akhir Baris (Trim)</string>
+    <string name="tool_duplicate_line">Duplikasi Baris Kursor Saat Ini</string>
+    <string name="tool_json_pretty">Format Rapi JSON (Pretty Print)</string>
+    <string name="tool_base64_encode">Encode Teks ke Base64</string>
+    <string name="tool_base64_decode">Decode Base64 ke Teks</string>
+    <string name="tool_toggle_line_ending">Ubah Line Ending (LF ↔ CRLF)</string>
+
+    <!-- Editor Settings Sheet -->
+    <string name="settings_title">Pengaturan Editor</string>
+    <string name="settings_theme_label">Skema Warna Editor</string>
+    <string name="settings_font_size">Ukuran Font Kode: %1$d sp</string>
+    <string name="settings_word_wrap">Word Wrap (Lipat Baris Panjang)</string>
+    <string name="settings_line_numbers">Tampilkan Nomor Baris (Gutter)</string>
+    <string name="settings_symbol_bar">Bilah Simbol Cepat di Atas Keyboard</string>
+    <string name="settings_tab_size">Ukuran Indentasi Tab</string>
+
+    <!-- Status Messages -->
+    <string name="status_saved">Tersimpan</string>
+    <string name="status_saving">Menyimpan…</string>
+    <string name="status_unsaved">Belum disimpan</string>
+    <string name="msg_saved_cloud">Dokumen tersimpan ke cloud</string>
+    <string name="msg_exported_file">Berhasil diekspor ke penyimpanan perangkat</string>
+    <string name="msg_imported_file">File lokal dibuka ke workspace</string>
+    <string name="msg_invalid_json">Format JSON tidak valid untuk dirapikan</string>
+    <string name="msg_invalid_base64">Teks bukan format Base64 yang valid</string>
+</resources>
