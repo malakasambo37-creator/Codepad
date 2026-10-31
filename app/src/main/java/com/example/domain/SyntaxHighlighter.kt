@@ -16,7 +16,8 @@ class CodeSyntaxVisualTransformation(
     private val language: CodeLanguage,
     private val palette: EditorColorPalette,
     private val searchMatches: List<IntRange> = emptyList(),
-    private val activeMatchIndex: Int = -1
+    private val activeMatchIndex: Int = -1,
+    private val markedRanges: List<IntRange> = emptyList()
 ) : VisualTransformation {
 
     override fun filter(text: AnnotatedString): TransformedText {
@@ -29,7 +30,8 @@ class CodeSyntaxVisualTransformation(
             language = language,
             palette = palette,
             searchMatches = searchMatches,
-            activeMatchIndex = activeMatchIndex
+            activeMatchIndex = activeMatchIndex,
+            markedRanges = markedRanges
         )
         return TransformedText(highlighted, OffsetMapping.Identity)
     }
@@ -120,7 +122,8 @@ object SyntaxHighlighter {
         language: CodeLanguage,
         palette: EditorColorPalette,
         searchMatches: List<IntRange> = emptyList(),
-        activeMatchIndex: Int = -1
+        activeMatchIndex: Int = -1,
+        markedRanges: List<IntRange> = emptyList()
     ): AnnotatedString {
         // Skip heavy regex passes on extremely huge files (> 80KB) to keep 60fps typing smooth
         val enableSyntax = language != CodeLanguage.PLAINTEXT && code.length <= 80_000
@@ -134,6 +137,22 @@ object SyntaxHighlighter {
                     CodeLanguage.HTML -> applyHtmlSpans(code, palette)
                     CodeLanguage.JSON -> applyJsonSpans(code, palette)
                     else -> applyGeneralCodeSpans(code, language, palette)
+                }
+            }
+
+            // Highlight Notepad++ Mark tab occurrences (classic coral/red mark style)
+            markedRanges.forEach { range ->
+                val start = range.first.coerceIn(0, code.length)
+                val endExclusive = (range.last + 1).coerceIn(start, code.length)
+                if (start < endExclusive) {
+                    addStyle(
+                        style = SpanStyle(
+                            background = Color(0x66EF4444),
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        start = start,
+                        end = endExclusive
+                    )
                 }
             }
 

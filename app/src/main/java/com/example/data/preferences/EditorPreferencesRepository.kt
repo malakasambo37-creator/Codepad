@@ -21,8 +21,13 @@ data class EditorSettings(
     val wordWrap: Boolean = false,
     val showLineNumbers: Boolean = true,
     val showSymbolBar: Boolean = true,
+    val showWhitespace: Boolean = false,
+    val showIndentGuides: Boolean = true,
+    val showDocumentMap: Boolean = false,
+    val showFunctionList: Boolean = false,
+    val overtypeMode: Boolean = false,
     val tabSize: Int = 4,
-    val editorThemeId: String = EditorPalettes.ObsidianPlus.id
+    val editorThemeId: String = EditorPalettes.NotepadClassicPc.id
 )
 
 class EditorPreferencesRepository(private val dataStore: DataStore<Preferences>) {
@@ -31,17 +36,22 @@ class EditorPreferencesRepository(private val dataStore: DataStore<Preferences>)
 
     val settingsFlow: Flow<EditorSettings> = dataStore.data.map { prefs ->
         EditorSettings(
-            fontSizeSp = (prefs[KEY_FONT_SIZE] ?: 14).coerceIn(10, 24),
+            fontSizeSp = (prefs[KEY_FONT_SIZE] ?: 14).coerceIn(9, 26),
             wordWrap = prefs[KEY_WORD_WRAP] ?: false,
             showLineNumbers = prefs[KEY_SHOW_LINE_NUMBERS] ?: true,
             showSymbolBar = prefs[KEY_SHOW_SYMBOL_BAR] ?: true,
+            showWhitespace = prefs[KEY_SHOW_WHITESPACE] ?: false,
+            showIndentGuides = prefs[KEY_SHOW_INDENT_GUIDES] ?: true,
+            showDocumentMap = prefs[KEY_SHOW_DOC_MAP] ?: false,
+            showFunctionList = prefs[KEY_SHOW_FUNC_LIST] ?: false,
+            overtypeMode = prefs[KEY_OVERTYPE_MODE] ?: false,
             tabSize = if (prefs[KEY_TAB_SIZE] == 2) 2 else 4,
-            editorThemeId = prefs[KEY_EDITOR_THEME] ?: EditorPalettes.ObsidianPlus.id
+            editorThemeId = prefs[KEY_EDITOR_THEME] ?: EditorPalettes.NotepadClassicPc.id
         )
     }
 
     suspend fun setFontSize(sizeSp: Int) {
-        dataStore.edit { it[KEY_FONT_SIZE] = sizeSp.coerceIn(10, 24) }
+        dataStore.edit { it[KEY_FONT_SIZE] = sizeSp.coerceIn(9, 26) }
     }
 
     suspend fun setWordWrap(enabled: Boolean) {
@@ -54,6 +64,26 @@ class EditorPreferencesRepository(private val dataStore: DataStore<Preferences>)
 
     suspend fun setShowSymbolBar(enabled: Boolean) {
         dataStore.edit { it[KEY_SHOW_SYMBOL_BAR] = enabled }
+    }
+
+    suspend fun setShowWhitespace(enabled: Boolean) {
+        dataStore.edit { it[KEY_SHOW_WHITESPACE] = enabled }
+    }
+
+    suspend fun setShowIndentGuides(enabled: Boolean) {
+        dataStore.edit { it[KEY_SHOW_INDENT_GUIDES] = enabled }
+    }
+
+    suspend fun setShowDocumentMap(enabled: Boolean) {
+        dataStore.edit { it[KEY_SHOW_DOC_MAP] = enabled }
+    }
+
+    suspend fun setShowFunctionList(enabled: Boolean) {
+        dataStore.edit { it[KEY_SHOW_FUNC_LIST] = enabled }
+    }
+
+    suspend fun setOvertypeMode(enabled: Boolean) {
+        dataStore.edit { it[KEY_OVERTYPE_MODE] = enabled }
     }
 
     suspend fun setTabSize(spaces: Int) {
@@ -69,6 +99,11 @@ class EditorPreferencesRepository(private val dataStore: DataStore<Preferences>)
         val KEY_WORD_WRAP = booleanPreferencesKey("word_wrap")
         val KEY_SHOW_LINE_NUMBERS = booleanPreferencesKey("show_line_numbers")
         val KEY_SHOW_SYMBOL_BAR = booleanPreferencesKey("show_symbol_bar")
+        val KEY_SHOW_WHITESPACE = booleanPreferencesKey("show_whitespace")
+        val KEY_SHOW_INDENT_GUIDES = booleanPreferencesKey("show_indent_guides")
+        val KEY_SHOW_DOC_MAP = booleanPreferencesKey("show_document_map")
+        val KEY_SHOW_FUNC_LIST = booleanPreferencesKey("show_function_list")
+        val KEY_OVERTYPE_MODE = booleanPreferencesKey("overtype_mode")
         val KEY_TAB_SIZE = intPreferencesKey("tab_size")
         val KEY_EDITOR_THEME = stringPreferencesKey("editor_theme_id")
     }

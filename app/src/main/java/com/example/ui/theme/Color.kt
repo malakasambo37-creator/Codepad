@@ -2,7 +2,7 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Notepad++ Chameleon Emerald & Obsidian Studio Brand Palette
+// Notepad++ Chameleon Green & Desktop Chrome Palette
 val EmeraldPrimaryDark = Color(0xFF4ADE80)
 val EmeraldOnPrimaryDark = Color(0xFF052E16)
 val EmeraldContainerDark = Color(0xFF14532D)
@@ -13,50 +13,60 @@ val CyanOnSecondaryDark = Color(0xFF082F49)
 val CyanContainerDark = Color(0xFF0C4A6E)
 val CyanOnContainerDark = Color(0xFFE0F2FE)
 
-val AmberTertiaryDark = Color(0xFFFBBF24)
-val AmberOnTertiaryDark = Color(0xFF451A03)
-val AmberContainerDark = Color(0xFF78350F)
-val AmberOnContainerDark = Color(0xFFFEF3C7)
+val AmberTertiaryDark = Color(0xFFF97316)
+val AmberOnTertiaryDark = Color(0xFF431407)
+val AmberContainerDark = Color(0xFF7C2D12)
+val AmberOnContainerDark = Color(0xFFFFEDD5)
 
 val ObsidianBackground = Color(0xFF0D1117)
-val ObsidianSurface = Color(0xFF161B22)
-val ObsidianSurfaceVariant = Color(0xFF21262D)
-val ObsidianOutline = Color(0xFF30363D)
+val ObsidianSurface = Color(0xFF1E222A)
+val ObsidianSurfaceVariant = Color(0xFF282C34)
+val ObsidianOutline = Color(0xFF3B4048)
 val ObsidianOnSurface = Color(0xFFE6EDF3)
-val ObsidianOnSurfaceVariant = Color(0xFF8B949E)
+val ObsidianOnSurfaceVariant = Color(0xFF9CA3AF)
 
-// Daylight Studio Light Palette
-val EmeraldPrimaryLight = Color(0xFF15803D)
+// Classic Windows / Notepad++ PC Light Chrome Palette
+val EmeraldPrimaryLight = Color(0xFF2E7D32)
 val EmeraldOnPrimaryLight = Color(0xFFFFFFFF)
 val EmeraldContainerLight = Color(0xFFDCFCE7)
 val EmeraldOnContainerLight = Color(0xFF052E16)
 
-val CyanSecondaryLight = Color(0xFF0369A1)
+val CyanSecondaryLight = Color(0xFF1565C0)
 val CyanOnSecondaryLight = Color(0xFFFFFFFF)
-val CyanContainerLight = Color(0xFFE0F2FE)
+val CyanContainerLight = Color(0xFFDBEAFE)
 val CyanOnContainerLight = Color(0xFF082F49)
 
-val AmberTertiaryLight = Color(0xFFB45309)
+val AmberTertiaryLight = Color(0xFFEA580C)
 val AmberOnTertiaryLight = Color(0xFFFFFFFF)
-val AmberContainerLight = Color(0xFFFEF3C7)
-val AmberOnContainerLight = Color(0xFF451A03)
+val AmberContainerLight = Color(0xFFFFEDD5)
+val AmberOnContainerLight = Color(0xFF431407)
 
-val PaperBackground = Color(0xFFF8FAFC)
-val PaperSurface = Color(0xFFFFFFFF)
-val PaperSurfaceVariant = Color(0xFFF1F5F9)
-val PaperOutline = Color(0xFFCBD5E1)
-val PaperOnSurface = Color(0xFF0F172A)
-val PaperOnSurfaceVariant = Color(0xFF475569)
+val PaperBackground = Color(0xFFF0F0F0)
+val PaperSurface = Color(0xFFF3F3F3)
+val PaperSurfaceVariant = Color(0xFFE4E6EB)
+val PaperOutline = Color(0xFFC4C7CC)
+val PaperOnSurface = Color(0xFF1B1F23)
+val PaperOnSurfaceVariant = Color(0xFF4B5563)
+
+// Classic Notepad++ Tab Floppy Icon Colors
+val FloppySavedBlue = Color(0xFF2563EB)
+val FloppyDirtyRed = Color(0xFFDC2626)
+val NotepadTabActiveStripe = Color(0xFFF97316)
 
 /**
- * Dedicated syntax-highlighting color schemes inspired by classic Notepad++ themes.
+ * Dedicated Scintilla / Notepad++ Style Configurator color schemes.
  */
 data class EditorColorPalette(
     val id: String,
     val displayName: String,
     val isDark: Boolean,
+    val chromeMenuBackground: Color,
+    val chromeToolbarBackground: Color,
+    val chromeTabStripBackground: Color,
+    val chromeStatusBackground: Color,
     val editorBackground: Color,
     val gutterBackground: Color,
+    val foldMarginBackground: Color,
     val gutterText: Color,
     val activeLineBackground: Color,
     val plainText: Color,
@@ -72,32 +82,70 @@ data class EditorColorPalette(
 )
 
 object EditorPalettes {
-    val ObsidianPlus = EditorColorPalette(
-        id = "obsidian",
-        displayName = "Obsidian++ Dark",
-        isDark = true,
-        editorBackground = Color(0xFF0D1117),
-        gutterBackground = Color(0xFF131922),
-        gutterText = Color(0xFF6E7681),
-        activeLineBackground = Color(0xFF161F2C),
-        plainText = Color(0xFFE6EDF3),
-        keyword = Color(0xFFFF7B72),
-        stringLiteral = Color(0xFFA5D6FF),
-        comment = Color(0xFF7EE787),
-        numberLiteral = Color(0xFF79C0FF),
-        annotationOrTag = Color(0xFFD2A8FF),
-        functionOrType = Color(0xFFFFA657),
-        operatorOrBracket = Color(0xFF4ADE80),
-        cursorColor = Color(0xFF4ADE80),
-        selectionBackground = Color(0x5522C55E)
+    // 1. Authentic Notepad++ Default PC Style (Scintilla White + #FFFBD6 Pale Yellow Active Line)
+    val NotepadClassicPc = EditorColorPalette(
+        id = "npp_classic",
+        displayName = "Default (Notepad++ Classic PC)",
+        isDark = false,
+        chromeMenuBackground = Color(0xFFF5F6F7),
+        chromeToolbarBackground = Color(0xFFECEEF1),
+        chromeTabStripBackground = Color(0xFFDCE0E6),
+        chromeStatusBackground = Color(0xFFEAECEF),
+        editorBackground = Color(0xFFFFFFFF),
+        gutterBackground = Color(0xFFE4E4E4),
+        foldMarginBackground = Color(0xFFEEEEEE),
+        gutterText = Color(0xFF686868),
+        activeLineBackground = Color(0xFFFFFBD6),
+        plainText = Color(0xFF000000),
+        keyword = Color(0xFF0000FF),
+        stringLiteral = Color(0xFF808080),
+        comment = Color(0xFF008000),
+        numberLiteral = Color(0xFFFF8000),
+        annotationOrTag = Color(0xFF8000FF),
+        functionOrType = Color(0xFF007F7F),
+        operatorOrBracket = Color(0xFF000080),
+        cursorColor = Color(0xFF000000),
+        selectionBackground = Color(0x663399FF)
     )
 
+    // 2. Notepad++ Dark Mode (Windows 11 Notepad++ Dark Mode)
+    val ObsidianPlus = EditorColorPalette(
+        id = "obsidian",
+        displayName = "Notepad++ Dark Mode",
+        isDark = true,
+        chromeMenuBackground = Color(0xFF21252B),
+        chromeToolbarBackground = Color(0xFF282C34),
+        chromeTabStripBackground = Color(0xFF181A1F),
+        chromeStatusBackground = Color(0xFF21252B),
+        editorBackground = Color(0xFF1E1E1E),
+        gutterBackground = Color(0xFF252526),
+        foldMarginBackground = Color(0xFF2B2B2C),
+        gutterText = Color(0xFF858585),
+        activeLineBackground = Color(0xFF2A2D2E),
+        plainText = Color(0xFFD4D4D4),
+        keyword = Color(0xFF569CD6),
+        stringLiteral = Color(0xFFCE9178),
+        comment = Color(0xFF6A9955),
+        numberLiteral = Color(0xFFB5CEA8),
+        annotationOrTag = Color(0xFFC586C0),
+        functionOrType = Color(0xFF4EC9B0),
+        operatorOrBracket = Color(0xFFDCDCAA),
+        cursorColor = Color(0xFF4ADE80),
+        selectionBackground = Color(0x55264F78)
+    )
+
+    // 3. Monokai (Classic Notepad++ Style Configurator Theme)
     val MonokaiPro = EditorColorPalette(
         id = "monokai",
-        displayName = "Monokai Classic",
+        displayName = "Monokai",
         isDark = true,
+        chromeMenuBackground = Color(0xFF1E1F1C),
+        chromeToolbarBackground = Color(0xFF272822),
+        chromeTabStripBackground = Color(0xFF171814),
+        chromeStatusBackground = Color(0xFF1E1F1C),
         editorBackground = Color(0xFF272822),
         gutterBackground = Color(0xFF1E1F1C),
+        foldMarginBackground = Color(0xFF23241F),
         gutterText = Color(0xFF90908A),
         activeLineBackground = Color(0xFF3E3D32),
         plainText = Color(0xFFF8F8F2),
@@ -112,12 +160,18 @@ object EditorPalettes {
         selectionBackground = Color(0x55A6E22E)
     )
 
+    // 4. Dracula
     val Dracula = EditorColorPalette(
         id = "dracula",
-        displayName = "Dracula Night",
+        displayName = "Dracula",
         isDark = true,
+        chromeMenuBackground = Color(0xFF1E1F29),
+        chromeToolbarBackground = Color(0xFF282A36),
+        chromeTabStripBackground = Color(0xFF191A21),
+        chromeStatusBackground = Color(0xFF1E1F29),
         editorBackground = Color(0xFF282A36),
         gutterBackground = Color(0xFF21222C),
+        foldMarginBackground = Color(0xFF252732),
         gutterText = Color(0xFF6272A4),
         activeLineBackground = Color(0xFF343746),
         plainText = Color(0xFFF8F8F2),
@@ -132,34 +186,15 @@ object EditorPalettes {
         selectionBackground = Color(0x55BD93F9)
     )
 
-    val NotepadClassicLight = EditorColorPalette(
-        id = "paper_light",
-        displayName = "Notepad++ Classic Light",
-        isDark = false,
-        editorBackground = Color(0xFFFFFFFF),
-        gutterBackground = Color(0xFFF1F5F9),
-        gutterText = Color(0xFF64748B),
-        activeLineBackground = Color(0xFFEFF6FF),
-        plainText = Color(0xFF0F172A),
-        keyword = Color(0xFF0000FF),
-        stringLiteral = Color(0xFFA31515),
-        comment = Color(0xFF008000),
-        numberLiteral = Color(0xFF098658),
-        annotationOrTag = Color(0xFF800000),
-        functionOrType = Color(0xFF795E26),
-        operatorOrBracket = Color(0xFF15803D),
-        cursorColor = Color(0xFF15803D),
-        selectionBackground = Color(0x443B82F6)
-    )
-
     val all: List<EditorColorPalette> = listOf(
+        NotepadClassicPc,
         ObsidianPlus,
         MonokaiPro,
-        Dracula,
-        NotepadClassicLight
+        Dracula
     )
 
     fun fromId(id: String): EditorColorPalette {
-        return all.firstOrNull { it.id == id } ?: ObsidianPlus
+        if (id == "paper_light") return NotepadClassicPc
+        return all.firstOrNull { it.id == id } ?: NotepadClassicPc
     }
 }

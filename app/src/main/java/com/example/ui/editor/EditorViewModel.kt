@@ -5,12 +5,14 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.R
 import com.example.data.model.CodeDocument
 import com.example.data.model.CodeLanguage
 import com.example.data.model.StarterTemplates
 import com.example.data.preferences.EditorPreferencesRepository
 import com.example.data.preferences.EditorSettings
 import com.example.data.repository.DocumentRepository
+import com.example.domain.SearchMode
 import com.example.domain.TextFxOperations
 import com.example.domain.TextToolAction
 import com.example.domain.TextToolOutcome
@@ -42,18 +44,27 @@ enum class SaveStatus {
 
 data class FindReplaceState(
     val isVisible: Boolean = false,
+    val activeTab: Int = 0, // 0 = Find, 1 = Replace, 2 = Mark
     val findQuery: String = "",
     val replaceQuery: String = "",
     val matchCase: Boolean = false,
-    val useRegex: Boolean = false,
+    val searchMode: SearchMode = SearchMode.NORMAL,
     val matches: List<IntRange> = emptyList(),
+    val markedRanges: List<IntRange> = emptyList(),
     val activeMatchIndex: Int = -1,
     val hasRegexError: Boolean = false
-)
+) {
+    val useRegex: Boolean get() = searchMode == SearchMode.REGEX
+}
 
 sealed interface EditorUiEvent {
     data class ShowMessage(val message: String) : EditorUiEvent
     data class ShowResMessage(val resId: Int) : EditorUiEvent
+}
+
+private sealed interface MacroStep {
+    data class InsertSnippet(val text: String) : MacroStep
+    data class ApplyTool(val action: TextToolAction) : MacroStep
 }
 
 private class TabBufferState(
@@ -71,6 +82,14 @@ class EditorViewModel(
 
     private val tabBuffers = mutableMapOf<String, TabBufferState>()
     private var autoSaveJob: Job? = null
+    private var hasAutoCreatedInitialTab = false
+
+    private val recordedMacroSteps = mutableListOf<MacroStep>()
+    private val _isRecordingMacro = MutableStateFlow(false)
+    val isRecordingMacro: StateFlow<Boolean> = _isRecordingMacro.asStateFlow()
+
+    private val _hasSavedMacro = MutableStateFlow(false)
+    val hasSavedMacro: StateFlow<Boolean> = _hasSavedMacro.asStateFlow()
 
     private val _activeDocId = MutableStateFlow<String?>(null)
     val activeDocId: StateFlow<String?> = _activeDocId.asStateFlow()
@@ -132,11 +151,33 @@ class EditorViewModel(
         return docs.firstOrNull { it.id == id }
     }
 
+    fun nextNewTabTitle(docs: List<CodeDocument> = currentDocsList()): String {
+        val usedNumbers = docs.mapNotNull { doc ->
+            Regex("""^new\s+(\d+)$""", RegexOption.IGNORE_CASE)
+                .find(doc.title.trim())
+                ?.groupValues
+                ?.getOrNull(1)
+                ?.toIntOrNull()
+        }.toSet()
+        var n = 1
+        while (n in usedNumbers) n++
+        return "new $n"
+    }
+
     private fun reconcileWithRemoteDocs(docs: List<CodeDocument>) {
+        // Just like Notepad++ on PC: automatically open "new 1" when workspace is completely empty on launch
+        if (docs.isEmpty() && !hasAutoCreatedInitialTab) {
+            hasAutoCreatedInitialTab = true
+            createQuickNewTab()
+            return
+        }
+        if (docs.isNotEmpty()) {
+            hasAutoCreatedInitialTab = true
+        }
+
         val openTabs = docs.filter { it.isOpenTab }
         val currentId = _activeDocId.value
 
-        // Populate buffer for newly arrived docs without overwriting dirty local edits
         docs.forEach { doc ->
             val existingBuffer = tabBuffers[doc.id]
             if (existingBuffer == null) {
@@ -157,7 +198,6 @@ class EditorViewModel(
             }
         }
 
-        // Remove deleted document buffers
         val validIds = docs.map { it.id }.toSet()
         tabBuffers.keys.retainAll(validIds)
         _dirtyDocIds.update { it.intersect(validIds) }
@@ -168,10 +208,17 @@ class EditorViewModel(
         }
     }
 
+    fun createQuickNewTab() {
+        createNewDocument(
+            title = nextNewTabTitle(),
+            language = CodeLanguage.PLAINTEXT,
+            useStarterTemplate = false
+        )
+    }
+
     fun selectTab(docId: String) {
         val docs = currentDocsList()
         val target = docs.firstOrNull { it.id == docId } ?: return
-        // Flush previous tab if dirty
         flushCurrentTabIfDirty()
 
         if (!target.isOpenTab) {
@@ -206,12 +253,30 @@ class EditorViewModel(
     }
 
     fun onEditorValueChange(newValue: TextFieldValue) {
+        onEditorValueChangeInternal(newValue, recordInMacro = true)
+    }
+
+    private fun onEditorValueChangeInternal(newValue: TextFieldValue, recordInMacro: Boolean) {
         val docId = _activeDocId.value ?: return
         val buffer = tabBuffers[docId] ?: return
         val previousValue = buffer.textFieldValue
         val textChanged = previousValue.text != newValue.text
 
         if (textChanged) {
+            // Record simple typed insertions when Macro Recorder is active
+            if (recordInMacro && _isRecordingMacro.value) {
+                val delta = newValue.text.length - previousValue.text.length
+                if (delta > 0 && newValue.selection.start >= delta) {
+                    val inserted = newValue.text.substring(
+                        (newValue.selection.start - delta).coerceAtLeast(0),
+                        newValue.selection.start.coerceAtMost(newValue.text.length)
+                    )
+                    if (inserted.isNotEmpty()) {
+                        recordedMacroSteps.add(MacroStep.InsertSnippet(inserted))
+                    }
+                }
+            }
+
             if (buffer.undoStack.size >= MAX_HISTORY) {
                 buffer.undoStack.removeFirst()
             }
@@ -231,6 +296,21 @@ class EditorViewModel(
         if (textChanged && _findReplaceState.value.isVisible) {
             recomputeFindMatches(newValue.text)
         }
+    }
+
+    fun selectAllText() {
+        val current = _editorValue.value
+        val updated = current.copy(selection = TextRange(0, current.text.length))
+        _editorValue.value = updated
+        _activeDocId.value?.let { id -> tabBuffers[id]?.textFieldValue = updated }
+    }
+
+    fun jumpToCharOffset(charOffset: Int) {
+        val current = _editorValue.value
+        val safe = charOffset.coerceIn(0, current.text.length)
+        val updated = current.copy(selection = TextRange(safe))
+        _editorValue.value = updated
+        _activeDocId.value?.let { id -> tabBuffers[id]?.textFieldValue = updated }
     }
 
     fun undo() {
@@ -272,19 +352,22 @@ class EditorViewModel(
     }
 
     fun insertSymbol(symbol: String) {
+        insertRawText(symbol, autoPair = true)
+    }
+
+    fun insertRawText(raw: String, autoPair: Boolean = false) {
         val current = _editorValue.value
         val text = current.text
         val start = current.selection.min.coerceIn(0, text.length)
         val end = current.selection.max.coerceIn(start, text.length)
 
-        val actualInsert = if (symbol == "TAB") {
+        val actualInsert = if (raw == "TAB") {
             " ".repeat(editorSettings.value.tabSize)
         } else {
-            symbol
+            raw
         }
 
-        // Auto-place cursor inside paired brackets/quotes when nothing is selected
-        val pairedSecondChar: Char? = if (start == end && actualInsert.length == 1) {
+        val pairedSecondChar: Char? = if (autoPair && start == end && actualInsert.length == 1) {
             when (actualInsert[0]) {
                 '{' -> '}'
                 '(' -> ')'
@@ -297,31 +380,93 @@ class EditorViewModel(
             null
         }
 
-        val inserted = if (pairedSecondChar != null) {
-            "$actualInsert$pairedSecondChar"
+        val inserted = if (pairedSecondChar != null) "$actualInsert$pairedSecondChar" else actualInsert
+        val overtypeEnd = if (editorSettings.value.overtypeMode && start == end && end < text.length && text[end] != '\n') {
+            (end + actualInsert.length).coerceAtMost(text.length)
         } else {
-            actualInsert
+            end
         }
 
-        val updatedText = buildString(text.length - (end - start) + inserted.length) {
+        val updatedText = buildString(text.length - (overtypeEnd - start) + inserted.length) {
             append(text, 0, start)
             append(inserted)
-            append(text, end, text.length)
+            append(text, overtypeEnd, text.length)
         }
-        val newCursor = if (pairedSecondChar != null) {
-            start + 1
-        } else {
-            start + inserted.length
-        }
+        val newCursor = if (pairedSecondChar != null) start + 1 else start + inserted.length
 
-        onEditorValueChange(
+        onEditorValueChangeInternal(
             TextFieldValue(
                 text = updatedText,
                 selection = TextRange(newCursor.coerceIn(0, updatedText.length))
-            )
+            ),
+            recordInMacro = true
         )
     }
 
+    // --- Macro Recorder (Classic Notepad++ Feature) ---
+    fun startMacroRecording() {
+        recordedMacroSteps.clear()
+        _isRecordingMacro.value = true
+        viewModelScope.launch {
+            _events.emit(EditorUiEvent.ShowResMessage(R.string.msg_macro_started))
+        }
+    }
+
+    fun stopMacroRecording() {
+        _isRecordingMacro.value = false
+        _hasSavedMacro.value = recordedMacroSteps.isNotEmpty()
+        viewModelScope.launch {
+            if (recordedMacroSteps.isNotEmpty()) {
+                _events.emit(
+                    EditorUiEvent.ShowMessage("Macro tersimpan (${recordedMacroSteps.size} langkah)")
+                )
+            } else {
+                _events.emit(EditorUiEvent.ShowResMessage(R.string.msg_macro_empty))
+            }
+        }
+    }
+
+    fun playMacro(times: Int = 1) {
+        if (recordedMacroSteps.isEmpty()) {
+            viewModelScope.launch {
+                _events.emit(EditorUiEvent.ShowResMessage(R.string.msg_macro_empty))
+            }
+            return
+        }
+        val repeatCount = times.coerceIn(1, 100)
+        val lang = activeDocument()?.let { CodeLanguage.fromId(it.language) } ?: CodeLanguage.PLAINTEXT
+        val tabSize = editorSettings.value.tabSize
+
+        var working = _editorValue.value
+        val stepsSnapshot = recordedMacroSteps.toList()
+        repeat(repeatCount) {
+            for (step in stepsSnapshot) {
+                when (step) {
+                    is MacroStep.InsertSnippet -> {
+                        val s = working.selection.min.coerceIn(0, working.text.length)
+                        val e = working.selection.max.coerceIn(s, working.text.length)
+                        val nextText = working.text.substring(0, s) + step.text + working.text.substring(e)
+                        working = TextFieldValue(nextText, TextRange(s + step.text.length))
+                    }
+                    is MacroStep.ApplyTool -> {
+                        val out = TextFxOperations.applyTextTool(
+                            step.action,
+                            working.text,
+                            working.selection,
+                            lang,
+                            tabSize
+                        )
+                        if (out is TextToolOutcome.Transformed) {
+                            working = TextFieldValue(out.text, out.selection)
+                        }
+                    }
+                }
+            }
+        }
+        onEditorValueChangeInternal(working, recordInMacro = false)
+    }
+
+    // --- Cloud Persistence & Multi-Tab Actions ---
     private fun scheduleAutoSave(docId: String) {
         autoSaveJob?.cancel()
         autoSaveJob = viewModelScope.launch {
@@ -335,6 +480,15 @@ class EditorViewModel(
         autoSaveJob?.cancel()
         viewModelScope.launch {
             saveDocumentById(docId, showFeedback = true)
+        }
+    }
+
+    fun saveAllTabs() {
+        autoSaveJob?.cancel()
+        val dirtyIds = _dirtyDocIds.value.toList()
+        viewModelScope.launch {
+            dirtyIds.forEach { id -> saveDocumentById(id, showFeedback = false) }
+            _events.emit(EditorUiEvent.ShowResMessage(R.string.msg_saved_all))
         }
     }
 
@@ -368,7 +522,7 @@ class EditorViewModel(
                 _saveStatus.value = SaveStatus.SAVED
             }
             if (showFeedback) {
-                _events.emit(EditorUiEvent.ShowResMessage(com.example.R.string.msg_saved_cloud))
+                _events.emit(EditorUiEvent.ShowResMessage(R.string.msg_saved_cloud))
             }
         } else {
             if (docId == _activeDocId.value) {
@@ -435,7 +589,7 @@ class EditorViewModel(
                 )
                 _activeDocId.value = createdId
                 _editorValue.value = TextFieldValue(normalizedContent, TextRange(0))
-                _events.emit(EditorUiEvent.ShowResMessage(com.example.R.string.msg_imported_file))
+                _events.emit(EditorUiEvent.ShowResMessage(R.string.msg_imported_file))
             }.onFailure { err ->
                 _events.emit(EditorUiEvent.ShowMessage(err.localizedMessage ?: "Gagal mengimpor file"))
             }
@@ -506,6 +660,40 @@ class EditorViewModel(
         }
     }
 
+    fun closeAllTabs() {
+        val openTabs = currentDocsList().filter { it.isOpenTab }
+        selectTabInternal(null, currentDocsList())
+        viewModelScope.launch {
+            openTabs.forEach { doc ->
+                val buffer = tabBuffers[doc.id]
+                val latestContent = buffer?.textFieldValue?.text ?: doc.content
+                val latestCursor = buffer?.textFieldValue?.selection?.start?.toLong() ?: doc.cursorPosition
+                repository.updateDocument(
+                    doc.copy(isOpenTab = false, content = latestContent, cursorPosition = latestCursor)
+                )
+                buffer?.isDirty = false
+                _dirtyDocIds.update { it - doc.id }
+            }
+        }
+    }
+
+    fun closeAllBut(keepDocId: String) {
+        val others = currentDocsList().filter { it.isOpenTab && it.id != keepDocId }
+        selectTab(keepDocId)
+        viewModelScope.launch {
+            others.forEach { doc ->
+                val buffer = tabBuffers[doc.id]
+                val latestContent = buffer?.textFieldValue?.text ?: doc.content
+                val latestCursor = buffer?.textFieldValue?.selection?.start?.toLong() ?: doc.cursorPosition
+                repository.updateDocument(
+                    doc.copy(isOpenTab = false, content = latestContent, cursorPosition = latestCursor)
+                )
+                buffer?.isDirty = false
+                _dirtyDocIds.update { it - doc.id }
+            }
+        }
+    }
+
     fun deleteDocument(doc: CodeDocument) {
         autoSaveJob?.cancel()
         val remainingTabs = currentDocsList().filter { it.isOpenTab && it.id != doc.id }
@@ -529,18 +717,24 @@ class EditorViewModel(
     }
 
     fun applyTextTool(action: TextToolAction) {
+        if (_isRecordingMacro.value) {
+            recordedMacroSteps.add(MacroStep.ApplyTool(action))
+        }
         val current = _editorValue.value
-        when (val outcome = TextFxOperations.applyTextTool(action, current.text, current.selection)) {
+        val lang = activeDocument()?.let { CodeLanguage.fromId(it.language) } ?: CodeLanguage.PLAINTEXT
+        val tabSize = editorSettings.value.tabSize
+        when (val outcome = TextFxOperations.applyTextTool(action, current.text, current.selection, lang, tabSize)) {
             is TextToolOutcome.Transformed -> {
-                onEditorValueChange(
-                    TextFieldValue(text = outcome.text, selection = outcome.selection)
+                onEditorValueChangeInternal(
+                    TextFieldValue(text = outcome.text, selection = outcome.selection),
+                    recordInMacro = false
                 )
             }
             is TextToolOutcome.ValidationError -> {
                 viewModelScope.launch {
                     val resId = when (outcome.errorCode) {
-                        TextToolOutcome.ErrorKind.INVALID_JSON -> com.example.R.string.msg_invalid_json
-                        TextToolOutcome.ErrorKind.INVALID_BASE64 -> com.example.R.string.msg_invalid_base64
+                        TextToolOutcome.ErrorKind.INVALID_JSON -> R.string.msg_invalid_json
+                        TextToolOutcome.ErrorKind.INVALID_BASE64 -> R.string.msg_invalid_base64
                     }
                     _events.emit(EditorUiEvent.ShowResMessage(resId))
                 }
@@ -558,12 +752,16 @@ class EditorViewModel(
         }
     }
 
-    // --- Explorer Search ---
     fun setExplorerSearchQuery(query: String) {
         _explorerSearchQuery.value = query
     }
 
-    // --- Find & Replace ---
+    // --- Find / Replace / Mark (Notepad++ Tabbed Search) ---
+    fun openFindPanel(tabIndex: Int = 0) {
+        _findReplaceState.update { it.copy(isVisible = true, activeTab = tabIndex.coerceIn(0, 2)) }
+        recomputeFindMatches(_editorValue.value.text)
+    }
+
     fun toggleFindBar(visible: Boolean = !_findReplaceState.value.isVisible) {
         _findReplaceState.update { it.copy(isVisible = visible) }
         if (visible) {
@@ -571,6 +769,10 @@ class EditorViewModel(
         } else {
             _findReplaceState.update { it.copy(matches = emptyList(), activeMatchIndex = -1) }
         }
+    }
+
+    fun setFindDialogTab(tabIndex: Int) {
+        _findReplaceState.update { it.copy(activeTab = tabIndex.coerceIn(0, 2)) }
     }
 
     fun updateFindQuery(query: String) {
@@ -587,9 +789,18 @@ class EditorViewModel(
         recomputeFindMatches(_editorValue.value.text, jumpToFirstMatch = true)
     }
 
-    fun toggleUseRegex() {
-        _findReplaceState.update { it.copy(useRegex = !it.useRegex) }
+    fun setSearchMode(mode: SearchMode) {
+        _findReplaceState.update { it.copy(searchMode = mode) }
         recomputeFindMatches(_editorValue.value.text, jumpToFirstMatch = true)
+    }
+
+    fun toggleUseRegex() {
+        val nextMode = if (_findReplaceState.value.searchMode == SearchMode.REGEX) {
+            SearchMode.NORMAL
+        } else {
+            SearchMode.REGEX
+        }
+        setSearchMode(nextMode)
     }
 
     private fun recomputeFindMatches(text: String, jumpToFirstMatch: Boolean = false) {
@@ -601,11 +812,11 @@ class EditorViewModel(
             return
         }
 
-        val res = TextFxOperations.findMatches(
+        val res = TextFxOperations.findMatchesWithMode(
             text = text,
             query = state.findQuery,
             matchCase = state.matchCase,
-            useRegex = state.useRegex
+            mode = state.searchMode
         )
         res.onSuccess { found ->
             val nextIdx = when {
@@ -624,6 +835,35 @@ class EditorViewModel(
                 it.copy(matches = emptyList(), activeMatchIndex = -1, hasRegexError = true)
             }
         }
+    }
+
+    fun countMatchesToast() {
+        val state = _findReplaceState.value
+        val count = state.matches.size
+        viewModelScope.launch {
+            _events.emit(EditorUiEvent.ShowMessage("Count: $count matches"))
+        }
+    }
+
+    fun markAllOccurrences() {
+        val state = _findReplaceState.value
+        if (state.findQuery.isEmpty()) return
+        val res = TextFxOperations.findMatchesWithMode(
+            text = _editorValue.value.text,
+            query = state.findQuery,
+            matchCase = state.matchCase,
+            mode = state.searchMode
+        )
+        res.onSuccess { found ->
+            _findReplaceState.update { it.copy(markedRanges = found, matches = found) }
+            viewModelScope.launch {
+                _events.emit(EditorUiEvent.ShowMessage("Mark: ${found.size} occurrences highlighted"))
+            }
+        }
+    }
+
+    fun clearMarks() {
+        _findReplaceState.update { it.copy(markedRanges = emptyList()) }
     }
 
     fun findNext() {
@@ -662,9 +902,13 @@ class EditorViewModel(
             replacement = state.replaceQuery,
             query = state.findQuery,
             matchCase = state.matchCase,
-            useRegex = state.useRegex
+            useRegex = state.useRegex,
+            mode = state.searchMode
         )
-        onEditorValueChange(TextFieldValue(text = newText, selection = TextRange(newCursor)))
+        onEditorValueChangeInternal(
+            TextFieldValue(text = newText, selection = TextRange(newCursor)),
+            recordInMacro = false
+        )
     }
 
     fun replaceAllMatches() {
@@ -675,26 +919,40 @@ class EditorViewModel(
             query = state.findQuery,
             replacement = state.replaceQuery,
             matchCase = state.matchCase,
-            useRegex = state.useRegex
+            useRegex = state.useRegex,
+            mode = state.searchMode
         )
         res.onSuccess { (newText, count) ->
             if (count > 0) {
-                onEditorValueChange(
+                onEditorValueChangeInternal(
                     TextFieldValue(
                         text = newText,
                         selection = TextRange(_editorValue.value.selection.start.coerceAtMost(newText.length))
-                    )
+                    ),
+                    recordInMacro = false
                 )
                 viewModelScope.launch {
-                    _events.emit(EditorUiEvent.ShowMessage("$count kecocokan berhasil diganti"))
+                    _events.emit(EditorUiEvent.ShowMessage("Replace All: $count occurrences were replaced"))
                 }
             }
         }
     }
 
-    // --- Preferences Mutators ---
+    // --- Preferences & Scintilla View Mutators ---
     fun setFontSize(sizeSp: Int) {
         viewModelScope.launch { preferencesRepository.setFontSize(sizeSp) }
+    }
+
+    fun zoomIn() {
+        setFontSize((editorSettings.value.fontSizeSp + 1).coerceAtMost(26))
+    }
+
+    fun zoomOut() {
+        setFontSize((editorSettings.value.fontSizeSp - 1).coerceAtLeast(9))
+    }
+
+    fun resetZoom() {
+        setFontSize(14)
     }
 
     fun setWordWrap(enabled: Boolean) {
@@ -707,6 +965,28 @@ class EditorViewModel(
 
     fun setShowSymbolBar(enabled: Boolean) {
         viewModelScope.launch { preferencesRepository.setShowSymbolBar(enabled) }
+    }
+
+    fun setShowWhitespace(enabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.setShowWhitespace(enabled) }
+    }
+
+    fun setShowIndentGuides(enabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.setShowIndentGuides(enabled) }
+    }
+
+    fun setShowDocumentMap(enabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.setShowDocumentMap(enabled) }
+    }
+
+    fun setShowFunctionList(enabled: Boolean) {
+        viewModelScope.launch { preferencesRepository.setShowFunctionList(enabled) }
+    }
+
+    fun toggleOvertypeMode() {
+        viewModelScope.launch {
+            preferencesRepository.setOvertypeMode(!editorSettings.value.overtypeMode)
+        }
     }
 
     fun setTabSize(spaces: Int) {
